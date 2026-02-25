@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Archive — Drawing Mirror</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">Drawing Mirror</span>
+  <span id="nav-user" class="text-sm text-muted"></span>
+</nav>
+
+<div class="container" style="padding-top: 40px; padding-bottom: 60px;">
+
+  <!-- Initial / loading state -->
+  <div id="state-loading" style="display: none;">
+    <p class="loading">Loading...</p>
+  </div>
+
+  <!-- No analysis yet -->
+  <div id="state-none" style="display: none;">
+    <h1>Your Drawing Archive</h1>
+    <p class="mt-8" id="drawing-count-text"></p>
+
+    <div class="card mt-24" style="max-width: 540px;">
+      <h3>Discover Your Lenses</h3>
+      <p class="mt-8">
+        Drawing Mirror will analyze your archive and surface 3–5 meaningful patterns or themes
+        specific to your body of work — not generic categories, but angles that emerge from
+        <em>your</em> drawings.
+      </p>
+      <button class="btn btn-lens mt-16" onclick="startAnalysis()">
+        ✦ Discover Lenses
+      </button>
+    </div>
+  </div>
+
+  <!-- Analysis running -->
+  <div id="state-running" style="display: none;">
+    <h1>Analyzing Your Archive</h1>
+    <p id="phase-text" class="mt-8 text-muted">Preparing...</p>
+
+    <div class="mt-24" style="max-width: 480px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span class="text-sm text-muted" id="progress-label">0 / 0 drawings</span>
+        <span class="text-sm text-muted" id="progress-pct">0%</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Failed -->
+  <div id="state-failed" style="display: none;">
+    <h1>Analysis Failed</h1>
+    <p id="error-text" class="mt-8" style="color: red;"></p>
+    <button class="btn btn-ghost mt-16" onclick="startAnalysis()">Try Again</button>
+  </div>
+
+  <!-- Lenses ready -->
+  <div id="state-complete" style="display: none;">
+    <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+      <h1>Your Drawing Archive</h1>
+      <button class="btn btn-ghost text-sm" onclick="resetAnalysis()" style="padding: 5px 10px;">
+        ↺ Re-analyze
+      </button>
+    </div>
+    <p class="mt-8 text-muted">
+      Claude discovered these lenses in your work. Each is an angle through which your drawings
+      tell a different story.
+    </p>
+
+    <div id="lens-grid" class="lens-grid mt-24"></div>
+  </div>
+
+</div>
+
+<script src="/static/app.js"></script>
+<script>
+let pollingInterval = null;
+
+async function init() {
+  if (!State.userId) { window.location.href = '/'; return; }
+
+  document.getElementById('nav-user').textContent = State.username;
+  showState('loading');
+
+  const status = await API.get(`/archive/status?user_id=${State.userId}`);
+  await handleStatus(status);
+}
+
+async function handleStatus(status) {
+  if (status.status === 'not_started' || status.status === 'failed' && !status.has_lenses) {
+    // Show drawing count
+    try {
+      const drawings = await API.get(`/drawings?user_id=${State.userId}`);
+      document.getElementById('drawing-count-text').textContent =
+        `${drawings.length} drawing${drawings.length !== 1 ? 's' : ''} ready for analysis`;
+    } catch(e) {}
+
+    if (status.status === 'failed') {
+      document.getElementById('error-text').textContent = status.error_message || 'Unknown error';
+      showState('failed');
+    } else {
+      showState('none');
+    }
+
+  } else if (status.status === 'running' || status.status === 'pending') {
+    showState('running');
+    updateProgress(status);
+    startPolling();
+
+  } else if (status.status === 'complete' || status.has_lenses) {
+    await loadLenses();
+
+  } else if (status.status === 'failed') {
+    document.getElementById('error-text').textContent = status.error_message || 'Unknown error';
+    showState('failed');
+  }
+}
+
+function updateProgress(status) {
+  const phase = status.phase || 'preparing';
+  const phaseLabels = {
+    'batch_analysis': 'Analyzing drawings...',
+    'lens_discovery': 'Discovering lenses...',
+    'done': 'Finishing up...',
+  };
+  document.getElementById('phase-text').textContent = phaseLabels[phase] || 'Processing...';
+
+  const total = status.total_drawings || 1;
+  const done  = status.analyzed_count || 0;
+  const pct   = phase === 'lens_discovery' ? 95 : Math.round((done / total) * 90);
+
+  document.getElementById('progress-label').textContent = `${done} / ${total} drawings`;
+  document.getElementById('progress-pct').textContent = `${pct}%`;
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function startPolling() {
+  if (pollingInterval) return;
+  pollingInterval = setInterval(async () => {
+    try {
+      const status = await API.get(`/archive/status?user_id=${State.userId}`);
+      if (status.status === 'running' || status.status === 'pending') {
+        updateProgress(status);
+      } else {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+        await handleStatus(status);
+      }
+    } catch(e) { console.error('Polling error:', e); }
+  }, 2500);
+}
+
+async function startAnalysis() {
+  showState('running');
+  document.getElementById('phase-text').textContent = 'Starting analysis...';
+  try {
+    await API.post(`/archive/analyze?user_id=${State.userId}`, {});
+    startPolling();
+  } catch(e) {
+    document.getElementById('error-text').textContent = e.message;
+    showState('failed');
+  }
+}
+
+async function resetAnalysis() {
+  if (!confirm('This will delete all discovered lenses and re-analyze your archive. Continue?')) return;
+  // Just re-trigger — server will create a new analysis
+  await startAnalysis();
+}
+
+async function loadLenses() {
+  const lenses = await API.get(`/lenses?user_id=${State.userId}`);
+  if (!lenses.length) {
+    showState('none');
+    return;
+  }
+
+  const grid = document.getElementById('lens-grid');
+  grid.innerHTML = '';
+
+  for (const lens of lenses) {
+    // Fetch top 3 thumbnail URLs for preview
+    let thumbs = [];
+    try {
+      const ld = await API.get(`/lenses/${lens.id}/drawings?user_id=${State.userId}`);
+      thumbs = ld.drawings.slice(0, 3).map(d => d.thumbnail_url).filter(Boolean);
+    } catch(e) {}
+
+    const thumbsHtml = thumbs.length
+      ? `<div class="lens-thumbs">${thumbs.map(u => `<img src="${u}" alt="">`).join('')}</div>`
+      : '';
+
+    const card = document.createElement('div');
+    card.className = 'lens-card fade-in';
+    card.innerHTML = `
+      <div class="lens-name">${lens.name}</div>
+      <div class="lens-desc">${lens.description}</div>
+      ${thumbsHtml}
+      <div class="mt-16">
+        <span class="text-sm text-muted">${lens.relevant_count} drawings</span>
+        <button class="btn btn-lens" style="float: right; padding: 7px 14px; font-size: 13px;">
+          Explore →
+        </button>
+      </div>
+    `;
+    card.querySelector('button').onclick = () => {
+      window.location.href = `/lens-view?lens_id=${lens.id}&user_id=${State.userId}`;
+    };
+    grid.appendChild(card);
+  }
+
+  showState('complete');
+}
+
+function showState(name) {
+  ['loading', 'none', 'running', 'failed', 'complete'].forEach(s => {
+    document.getElementById('state-' + s).style.display = s === name ? '' : 'none';
+  });
+}
+
+init();
+</script>
+</body>
+</html>

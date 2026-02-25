@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drawing Mirror</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">Drawing Mirror</span>
+</nav>
+
+<div class="container" style="padding-top: 48px; padding-bottom: 48px; max-width: 680px;">
+  <h1>Drawing Mirror</h1>
+  <p class="mt-8" style="font-size: 16px;">
+    Reflect on your drawing archive through AI-discovered lenses.
+  </p>
+
+  <div id="user-list" class="user-grid mt-24">
+    <p class="loading">Loading archives...</p>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+<script>
+async function init() {
+  let users;
+  try {
+    users = await API.get('/users');
+  } catch (e) {
+    document.getElementById('user-list').innerHTML =
+      '<p style="color:red">Error loading users: ' + e.message + '</p>';
+    return;
+  }
+
+  if (users.length === 0) {
+    document.getElementById('user-list').innerHTML =
+      '<p class="text-muted">No drawing archives found in dataset folder.</p>';
+    return;
+  }
+
+  // Auto-redirect if only one user
+  if (users.length === 1) {
+    State.userId = users[0].id;
+    State.username = users[0].username;
+    window.location.href = '/archive';
+    return;
+  }
+
+  document.getElementById('user-list').innerHTML = users.map(u => `
+    <div class="card" style="cursor: pointer;" onclick="selectUser(${u.id}, '${u.username}')">
+      <h3>${u.display_name}</h3>
+      <p class="mt-8 text-sm">${u.drawing_count} drawing${u.drawing_count !== 1 ? 's' : ''}</p>
+      <button class="btn btn-primary mt-16" style="width: 100%;">View Archive →</button>
+    </div>
+  `).join('');
+}
+
+function selectUser(id, username) {
+  State.userId = id;
+  State.username = username;
+  window.location.href = '/archive';
+}
+
+init();
+</script>
+</body>
+</html>

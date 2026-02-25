@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drawing — Drawing Mirror</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .detail-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: start;
+      padding-top: 32px;
+    }
+    @media (max-width: 700px) {
+      .detail-layout { grid-template-columns: 1fr; }
+    }
+    .full-image {
+      width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-tertiary);
+      margin-bottom: 8px;
+    }
+    .ai-text {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+    .lens-text {
+      font-size: 15px;
+      font-style: italic;
+      color: var(--text);
+      line-height: 1.65;
+      padding: 14px 16px;
+      background: var(--lens-purple-light);
+      border-left: 3px solid var(--lens-purple);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+    .user-note {
+      margin-top: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      background: var(--bg);
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-back" id="back-link" href="/archive">← Back</a>
+  <span class="nav-brand">Drawing Mirror</span>
+</nav>
+
+<div class="container" style="max-width: 900px; padding-bottom: 60px;">
+  <div class="detail-layout">
+
+    <!-- Left: image + metadata -->
+    <div>
+      <img id="drawing-img" class="full-image" src="" alt="" />
+      <div class="mt-16">
+        <div id="drawing-date" class="text-sm text-muted"></div>
+        <div id="drawing-title" style="font-size: 18px; font-weight: 600; margin-top: 4px;"></div>
+      </div>
+    </div>
+
+    <!-- Right: AI observations + reactions -->
+    <div>
+
+      <!-- Lens annotation (if coming from lens view) -->
+      <div id="section-lens" style="display: none; margin-bottom: 28px;">
+        <div class="section-label" id="lens-label"></div>
+        <div class="lens-text" id="lens-annotation-text"></div>
+        <div class="drawing-reactions mt-16" id="lens-reactions"></div>
+        <div id="lens-user-note" class="user-note" style="display: none;"></div>
+      </div>
+
+      <!-- General AI observation -->
+      <div id="section-analysis" style="display: none; margin-bottom: 28px;">
+        <div class="section-label">What AI noticed</div>
+        <div class="ai-text" id="analysis-text"></div>
+        <div class="drawing-reactions mt-16" id="analysis-reactions"></div>
+        <div id="analysis-user-note" class="user-note" style="display: none;"></div>
+      </div>
+
+      <p id="loading-text" class="loading">Loading...</p>
+    </div>
+
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+<script>
+const drawingId = parseInt(getParam('drawing_id'));
+const lensId    = getParam('lens_id');
+const userId    = parseInt(getParam('user_id') || State.userId);
+
+async function init() {
+  if (!drawingId) { window.location.href = '/'; return; }
+  State.userId = userId;
+
+  // Set back link
+  if (lensId) {
+    document.getElementById('back-link').href =
+      `/lens-view?lens_id=${lensId}&user_id=${userId}`;
+  } else {
+    document.getElementById('back-link').href = '/archive';
+  }
+
+  // Load drawing
+  let drawing;
+  try {
+    drawing = await API.get(`/drawings/${drawingId}`);
+  } catch(e) {
+    document.getElementById('loading-text').textContent = 'Drawing not found.';
+    return;
+  }
+
+  // Fill metadata
+  document.getElementById('drawing-img').src = `/api/drawings/${drawingId}/image`;
+  document.getElementById('drawing-img').alt = drawing.title || drawing.filename;
+  document.getElementById('drawing-date').textContent = drawing.drawn_date || '';
+  document.getElementById('drawing-title').textContent = drawing.title || drawing.filename;
+  document.title = (drawing.title || drawing.filename) + ' — Drawing Mirror';
+
+  document.getElementById('loading-text').style.display = 'none';
+
+  // Show lens annotation if available
+  if (lensId) {
+    await loadLensAnnotation(drawing);
+  }
+
+  // Show general analysis
+  if (drawing.analysis_text) {
+    document.getElementById('analysis-text').textContent = drawing.analysis_text;
+    document.getElementById('section-analysis').style.display = '';
+  }
+
+  // Load reactions
+  await loadAllReactions();
+}
+
+async function loadLensAnnotation(drawing) {
+  try {
+    const lensData = await API.get(`/lenses/${lensId}/drawings?user_id=${userId}`);
+    const lensDrawing = lensData.drawings.find(d => d.id === drawingId);
+
+    document.getElementById('lens-label').textContent = `Through: ${lensData.lens.name}`;
+    document.getElementById('section-lens').style.display = '';
+
+    if (lensDrawing && lensDrawing.annotation) {
+      document.getElementById('lens-annotation-text').textContent = lensDrawing.annotation;
+    } else {
+      document.getElementById('lens-annotation-text').textContent =
+        'Observation not yet generated.';
+      document.getElementById('lens-annotation-text').style.fontStyle = 'normal';
+      document.getElementById('lens-annotation-text').style.color = 'var(--text-tertiary)';
+    }
+  } catch(e) {
+    console.error('Lens load error:', e);
+  }
+}
+
+async function loadAllReactions() {
+  let reactions = [];
+  try {
+    reactions = await API.get(`/reactions?drawing_id=${drawingId}&user_id=${userId}`);
+  } catch(e) { return; }
+
+  // Lens annotation reactions
+  if (lensId) {
+    const lensReaction = reactions.find(r =>
+      r.target_type === 'lens_annotation' && String(r.target_id) === String(lensId)
+    );
+    renderReactionArea('lens-reactions', 'lens-user-note', drawingId, 'lens_annotation', lensId, lensReaction);
+  }
+
+  // General analysis reactions
+  const analysisReaction = reactions.find(r => r.target_type === 'drawing_analysis');
+  if (document.getElementById('section-analysis').style.display !== 'none') {
+    renderReactionArea('analysis-reactions', 'analysis-user-note', drawingId, 'drawing_analysis', null, analysisReaction);
+  }
+}
+
+function renderReactionArea(containerId, noteId, drawingId, targetType, targetId, existing) {
+  const container = document.getElementById(containerId);
+  const noteEl = document.getElementById(noteId);
+
+  const types = [
+    { type: 'agree',    label: '✓ Agree' },
+    { type: 'disagree', label: '✗ Disagree' },
+    { type: 'annotate', label: '✎ Add Note' },
+  ];
+
+  container.innerHTML = types.map(({ type, label }) => {
+    const active = existing && existing.reaction_type === type ? `active-${type}` : '';
+    return `<button class="reaction-btn ${active}"
+              onclick="react(${drawingId}, '${type}', '${targetType}', ${JSON.stringify(targetId)})">
+              ${label}
+            </button>`;
+  }).join('');
+
+  if (existing && existing.reaction_type === 'annotate' && existing.annotation_text) {
+    noteEl.textContent = '"' + existing.annotation_text + '"';
+    noteEl.style.display = '';
+  } else {
+    noteEl.style.display = 'none';
+  }
+}
+
+async function react(drawingId, reactionType, targetType, targetId) {
+  let annotationText = null;
+  if (reactionType === 'annotate') {
+    annotationText = prompt('Your note:');
+    if (annotationText === null) return;
+  }
+  try {
+    await API.post('/reactions', {
+      user_id: userId,
+      drawing_id: drawingId,
+      target_type: targetType,
+      target_id: targetId ? String(targetId) : null,
+      reaction_type: reactionType,
+      annotation_text: annotationText,
+    });
+    await loadAllReactions();
+  } catch(e) { console.error('Reaction error:', e); }
+}
+
+init();
+</script>
+</body>
+</html>

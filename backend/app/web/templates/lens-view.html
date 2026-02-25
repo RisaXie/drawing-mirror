@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lens View — Drawing Mirror</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-back" href="/archive">← Archive</a>
+  <span class="nav-brand">Drawing Mirror</span>
+</nav>
+
+<div class="container" style="padding-top: 32px; padding-bottom: 60px; max-width: 800px;">
+
+  <div id="lens-header" style="margin-bottom: 32px;">
+    <h1 id="lens-name" style="color: var(--lens-purple);">Loading...</h1>
+    <p id="lens-desc" class="mt-8" style="font-size: 15px;"></p>
+    <p id="lens-count" class="mt-8 text-sm text-muted"></p>
+  </div>
+
+  <!-- Annotation progress (shown while generating) -->
+  <div id="annotation-progress" style="display: none; margin-bottom: 24px;">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+      <span class="text-sm text-muted">Generating observations...</span>
+      <span class="text-sm text-muted" id="annotation-pct"></span>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar" id="annotation-bar" style="width: 0%;"></div>
+    </div>
+  </div>
+
+  <div id="drawings-list"></div>
+
+</div>
+
+<script src="/static/app.js"></script>
+<script>
+const lensId  = parseInt(getParam('lens_id'));
+const userId  = parseInt(getParam('user_id') || State.userId);
+let annotationInterval = null;
+let drawingsData = [];
+
+async function init() {
+  if (!lensId || !userId) { window.location.href = '/'; return; }
+  State.userId = userId;
+
+  await loadDrawings();
+}
+
+async function loadDrawings() {
+  const data = await API.get(`/lenses/${lensId}/drawings?user_id=${userId}`);
+  drawingsData = data.drawings;
+
+  // Update header
+  document.getElementById('lens-name').textContent = data.lens.name;
+  document.getElementById('lens-desc').textContent = data.lens.description;
+  document.getElementById('lens-count').textContent =
+    `${data.drawings.length} drawing${data.drawings.length !== 1 ? 's' : ''}`;
+
+  renderDrawings(data.drawings);
+
+  if (!data.annotations_ready) {
+    startAnnotationPolling(data);
+  }
+}
+
+function renderDrawings(drawings) {
+  const list = document.getElementById('drawings-list');
+  list.innerHTML = '';
+
+  if (!drawings.length) {
+    list.innerHTML = '<p class="text-muted">No drawings match this lens.</p>';
+    return;
+  }
+
+  for (const d of drawings) {
+    const row = document.createElement('div');
+    row.className = 'drawing-row fade-in';
+    row.id = `drawing-row-${d.id}`;
+
+    const annotationHtml = d.annotation
+      ? `<div class="drawing-annotation">${d.annotation}</div>`
+      : `<div class="drawing-annotation annotation-pending">Generating observation...</div>`;
+
+    row.innerHTML = `
+      <img class="drawing-thumb" src="${d.thumbnail_url || ''}" alt="${d.title || d.filename}"
+           onclick="window.location.href='/drawing-detail?drawing_id=${d.id}&lens_id=${lensId}&user_id=${userId}'">
+      <div class="drawing-meta">
+        <div class="drawing-date">${d.drawn_date || 'Unknown date'}</div>
+        <div class="drawing-title">${d.title || d.filename}</div>
+        ${annotationHtml}
+        <div class="drawing-reactions" id="reactions-${d.id}">
+          ${renderReactionButtons(d.id, null)}
+        </div>
+      </div>
+    `;
+    list.appendChild(row);
+    loadReactions(d.id);
+  }
+}
+
+function renderReactionButtons(drawingId, existing) {
+  const types = [
+    { type: 'agree',    label: '✓ Agree' },
+    { type: 'disagree', label: '✗ Disagree' },
+    { type: 'annotate', label: '✎ Note' },
+  ];
+  return types.map(({ type, label }) => {
+    const active = existing && existing.reaction_type === type ? `active-${type}` : '';
+    return `<button class="reaction-btn ${active}"
+              onclick="react(${drawingId}, '${type}', ${JSON.stringify(lensId)})">
+              ${label}
+            </button>`;
+  }).join('');
+}
+
+async function loadReactions(drawingId) {
+  try {
+    const reactions = await API.get(`/reactions?drawing_id=${drawingId}&user_id=${userId}`);
+    const lensReaction = reactions.find(r =>
+      r.target_type === 'lens_annotation' && String(r.target_id) === String(lensId)
+    );
+    if (lensReaction) {
+      document.getElementById(`reactions-${drawingId}`).innerHTML =
+        renderReactionButtons(drawingId, lensReaction);
+    }
+  } catch(e) {}
+}
+
+async function react(drawingId, reactionType, lensIdVal) {
+  let annotationText = null;
+  if (reactionType === 'annotate') {
+    annotationText = prompt('Add your note:');
+    if (annotationText === null) return; // cancelled
+  }
+  try {
+    await API.post('/reactions', {
+      user_id: userId,
+      drawing_id: drawingId,
+      target_type: 'lens_annotation',
+      target_id: String(lensIdVal),
+      reaction_type: reactionType,
+      annotation_text: annotationText,
+    });
+    await loadReactions(drawingId);
+  } catch(e) { console.error('Reaction error:', e); }
+}
+
+function startAnnotationPolling(initialData) {
+  const totalNeeded = initialData.annotation_total;
+  let doneCount = initialData.annotation_done;
+
+  document.getElementById('annotation-progress').style.display = '';
+  updateAnnotationProgress(doneCount, totalNeeded);
+
+  annotationInterval = setInterval(async () => {
+    try {
+      const status = await API.get(`/lenses/${lensId}/annotation_status?user_id=${userId}`);
+      doneCount = status.ready;
+      updateAnnotationProgress(doneCount, status.total);
+
+      if (status.status === 'complete') {
+        clearInterval(annotationInterval);
+        document.getElementById('annotation-progress').style.display = 'none';
+        // Refresh to show annotations
+        await loadDrawings();
+      } else {
+        // Update individual annotations that are ready
+        await refreshAnnotations();
+      }
+    } catch(e) { console.error('Annotation poll error:', e); }
+  }, 3000);
+}
+
+async function refreshAnnotations() {
+  try {
+    const data = await API.get(`/lenses/${lensId}/drawings?user_id=${userId}`);
+    for (const d of data.drawings) {
+      if (d.annotation) {
+        const row = document.getElementById(`drawing-row-${d.id}`);
+        if (row) {
+          const annEl = row.querySelector('.drawing-annotation');
+          if (annEl && annEl.classList.contains('annotation-pending')) {
+            annEl.classList.remove('annotation-pending');
+            annEl.textContent = d.annotation;
+          }
+        }
+      }
+    }
+  } catch(e) {}
+}
+
+function updateAnnotationProgress(done, total) {
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('annotation-pct').textContent = `${done}/${total}`;
+  document.getElementById('annotation-bar').style.width = pct + '%';
+}
+
+init();
+</script>
+</body>
+</html>
