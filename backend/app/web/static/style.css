@@ -318,32 +318,30 @@ p  { color: var(--text-secondary); }
   transform: scale(1);
 }
 
-/* ── Image wrapper: compact square → full-height image when active ── */
+/* ── Image wrapper: compact square → tall image when active ── */
 .tl-thumb-wrap {
   flex-shrink: 0;
   width: 52px;
   height: 52px;
-  border-radius: var(--radius-sm);
   overflow: hidden;
-  border: 1px solid var(--border);
-  background: var(--bg);
+  /* no border-radius, no background — clean edge */
   transition: width 0.36s cubic-bezier(0.4,0,0.2,1),
               height 0.36s cubic-bezier(0.4,0,0.2,1);
 }
 .timeline-row.tl-active .tl-thumb-wrap {
-  /* 50% of the panel height — viewport minus nav (61px) minus panel-header (~72px) */
-  width: calc((100vh - 133px) * 0.5 * 0.75);  /* approx 4:3 aspect */
+  /* 50% of panel height (viewport - nav 61px - header ~72px) */
   height: calc((100vh - 133px) * 0.5);
+  /* width: auto lets the image determine natural width, but we cap it */
+  width: calc((100vh - 133px) * 0.5 * 0.75);  /* 4:3 approx */
 }
-/* Thumbnail: always cover (compact); JS swaps src to full image when active.
-   object-fit stays cover — the full image naturally fits because it's loaded at full res
-   and the container is tall enough to show it without distortion. */
 .tl-thumb {
   width: 100%;
   height: 100%;
-  object-fit: contain;   /* contain so full drawing shows without crop */
-  background: var(--bg);
+  object-fit: cover;    /* compact: crop to square */
   display: block;
+}
+.timeline-row.tl-active .tl-thumb {
+  object-fit: contain;  /* active: show full drawing, no crop */
 }
 .tl-thumb-placeholder {
   width: 100%;
@@ -351,7 +349,7 @@ p  { color: var(--text-secondary); }
   background: var(--border);
 }
 
-/* ── Right meta area: narrower when image is large ── */
+/* ── Right meta area: flex:1 fills all remaining space ── */
 .tl-meta {
   flex: 1;
   min-width: 0;
@@ -359,12 +357,6 @@ p  { color: var(--text-secondary); }
   flex-direction: column;
   gap: 3px;
   padding-top: 2px;
-  /* Constrain width so the large image gets most of the row width */
-  max-width: 180px;
-  transition: max-width 0.36s cubic-bezier(0.4,0,0.2,1);
-}
-.timeline-row.tl-active .tl-meta {
-  max-width: 180px;  /* keep narrow alongside the large image */
 }
 .tl-title {
   font-size: 13px;
