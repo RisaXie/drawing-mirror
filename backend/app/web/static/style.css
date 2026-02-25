@@ -318,7 +318,7 @@ p  { color: var(--text-secondary); }
   transform: scale(1);
 }
 
-/* ── Thumbnail: grows when active ── */
+/* ── Image wrapper: compact square → full-height image when active ── */
 .tl-thumb-wrap {
   flex-shrink: 0;
   width: 52px;
@@ -326,17 +326,23 @@ p  { color: var(--text-secondary); }
   border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px solid var(--border);
-  transition: width 0.32s cubic-bezier(0.4,0,0.2,1),
-              height 0.32s cubic-bezier(0.4,0,0.2,1);
+  background: var(--bg);
+  transition: width 0.36s cubic-bezier(0.4,0,0.2,1),
+              height 0.36s cubic-bezier(0.4,0,0.2,1);
 }
 .timeline-row.tl-active .tl-thumb-wrap {
-  width: 120px;
-  height: 120px;
+  /* 50% of the panel height — viewport minus nav (61px) minus panel-header (~72px) */
+  width: calc((100vh - 133px) * 0.5 * 0.75);  /* approx 4:3 aspect */
+  height: calc((100vh - 133px) * 0.5);
 }
+/* Thumbnail: always cover (compact); JS swaps src to full image when active.
+   object-fit stays cover — the full image naturally fits because it's loaded at full res
+   and the container is tall enough to show it without distortion. */
 .tl-thumb {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;   /* contain so full drawing shows without crop */
+  background: var(--bg);
   display: block;
 }
 .tl-thumb-placeholder {
@@ -345,7 +351,7 @@ p  { color: var(--text-secondary); }
   background: var(--border);
 }
 
-/* ── Right meta area ── */
+/* ── Right meta area: narrower when image is large ── */
 .tl-meta {
   flex: 1;
   min-width: 0;
@@ -353,6 +359,12 @@ p  { color: var(--text-secondary); }
   flex-direction: column;
   gap: 3px;
   padding-top: 2px;
+  /* Constrain width so the large image gets most of the row width */
+  max-width: 180px;
+  transition: max-width 0.36s cubic-bezier(0.4,0,0.2,1);
+}
+.timeline-row.tl-active .tl-meta {
+  max-width: 180px;  /* keep narrow alongside the large image */
 }
 .tl-title {
   font-size: 13px;
@@ -361,12 +373,12 @@ p  { color: var(--text-secondary); }
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text);
-  transition: font-size 0.28s ease;
 }
 .timeline-row.tl-active .tl-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   white-space: normal;
+  overflow: visible;
 }
 .tl-date { font-size: 11px; color: var(--text-tertiary); }
 
@@ -375,10 +387,10 @@ p  { color: var(--text-secondary); }
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease 0.06s;
+  transition: max-height 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease 0.08s;
 }
 .timeline-row.tl-active .tl-extra {
-  max-height: 300px;
+  max-height: 400px;
   opacity: 1;
 }
 .tl-annotation {

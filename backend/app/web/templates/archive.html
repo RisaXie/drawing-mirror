@@ -494,12 +494,16 @@ function renderTimeline(lensId) {
     row.className = 'timeline-row';
     row.dataset.drawingId = drawing.id;
 
-    // Single horizontal layout: left thumb (grows when active) + right meta
-    // .tl-extra slides open when active to show annotation + reactions
+    const fullSrc = `/api/drawings/${drawing.id}/image`;
+
+    // Single horizontal layout: left image (grows when active) + right meta
+    // img carries data-thumb-src and data-full-src so activateRow can swap
     row.innerHTML = `
       <div class="tl-thumb-wrap">
         ${thumbSrc
-          ? `<img class="tl-thumb" src="${thumbSrc}" alt="">`
+          ? `<img class="tl-thumb" src="${thumbSrc}"
+                  data-thumb-src="${thumbSrc}"
+                  data-full-src="${fullSrc}" alt="">`
           : `<div class="tl-thumb tl-thumb-placeholder"></div>`}
       </div>
       <div class="tl-meta">
@@ -564,21 +568,43 @@ function setupScrollObserver(lensId) {
 
   function activateRow(row) {
     if (row === lastActiveRow) return;
-    if (lastActiveRow) lastActiveRow.classList.remove('tl-active');
+
+    // Deactivate previous: swap back to thumbnail src
+    if (lastActiveRow) {
+      lastActiveRow.classList.remove('tl-active');
+      const prevImg = lastActiveRow.querySelector('.tl-thumb[data-thumb-src]');
+      if (prevImg) prevImg.src = prevImg.dataset.thumbSrc;
+    }
+
     row.classList.add('tl-active');
     lastActiveRow = row;
     activeDrawingId = parseInt(row.dataset.drawingId);
+
+    // Swap thumbnail → full image
+    const img = row.querySelector('.tl-thumb[data-full-src]');
+    if (img && img.dataset.fullSrc) img.src = img.dataset.fullSrc;
+
     drawCanvas();
+
+    // Scroll so the row sits just below the panel-header (not hidden behind it)
+    // Use scrollEl.scrollTop adjustment rather than scrollIntoView (which scrolls the page)
+    const headerEl = document.querySelector('#panel-timeline .panel-header');
+    const headerBottom = headerEl ? headerEl.getBoundingClientRect().bottom : scrollEl.getBoundingClientRect().top;
+    const rowTop = row.getBoundingClientRect().top;
+    const gap = rowTop - headerBottom;
+    if (gap < 8) {
+      // Row is above or too close to header — scroll it down into view
+      scrollEl.scrollTop += gap - 8;
+    }
   }
 
   function pickTopRow() {
     const rows = scrollEl.querySelectorAll('.timeline-row');
     const containerTop = scrollEl.getBoundingClientRect().top;
-    // Find the first row whose bottom edge is below the container top
-    // (i.e., at least partially visible at the top of the scroll area)
+    // First row whose bottom edge clears the container top by at least 4px
     for (const row of rows) {
       const rect = row.getBoundingClientRect();
-      if (rect.bottom > containerTop + 4) {   // +4px tolerance
+      if (rect.bottom > containerTop + 4) {
         activateRow(row);
         return;
       }
