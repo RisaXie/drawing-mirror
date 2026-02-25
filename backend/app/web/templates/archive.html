@@ -450,6 +450,8 @@ function onLensClick(lensId) {
 function backToLenses() {
   mapMode = 'lenses'; activeLensId = null; activeDrawingId = null;
   if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
+  const scrollEl = document.getElementById('timeline-scroll');
+  if (_scrollHandler && scrollEl) { scrollEl.removeEventListener('scroll', _scrollHandler); _scrollHandler = null; }
   document.getElementById('panel-timeline').style.display = 'none';
   document.getElementById('panel-lenses').style.display   = '';
   drawCanvas();
@@ -483,39 +485,33 @@ function renderTimeline(lensId) {
     }
 
     const thumb = thumbImages[drawing.id];
-    const thumbSrc  = thumb ? thumb.src : (drawing.thumbnail_url || '');
-    const fullSrc   = `/api/drawings/${drawing.id}/image`;
+    const thumbSrc = thumb ? thumb.src : (drawing.thumbnail_url || '');
+    const annotationHtml = drawing.annotation
+      ? drawing.annotation
+      : '<span style="color:var(--text-tertiary);font-style:normal;">Annotation loading…</span>';
 
     const row = document.createElement('div');
     row.className = 'timeline-row';
     row.dataset.drawingId = drawing.id;
 
-    // Compact view (shown by default, when not tl-active)
+    // Single horizontal layout: left thumb (grows when active) + right meta
+    // .tl-extra slides open when active to show annotation + reactions
     row.innerHTML = `
-      <div class="tl-compact">
-        <div class="tl-thumb-wrap">
-          ${thumbSrc ? `<img class="tl-thumb" src="${thumbSrc}" alt="">` : `<div class="tl-thumb tl-thumb-placeholder"></div>`}
-        </div>
-        <div class="tl-meta">
-          <div class="tl-title">${drawing.title || drawing.filename}</div>
-          <div class="tl-date">${drawing.drawn_date || ''}</div>
-        </div>
+      <div class="tl-thumb-wrap">
+        ${thumbSrc
+          ? `<img class="tl-thumb" src="${thumbSrc}" alt="">`
+          : `<div class="tl-thumb tl-thumb-placeholder"></div>`}
       </div>
-
-      <div class="tl-card">
-        <div class="tl-card-img-wrap">
-          <img class="tl-card-img" src="${fullSrc}" alt="${drawing.title || drawing.filename}">
-        </div>
-        <div class="tl-card-body">
-          <div class="tl-card-title">${drawing.title || drawing.filename}</div>
-          <div class="tl-card-date">${drawing.drawn_date || ''}</div>
-          <div class="tl-card-annotation">${drawing.annotation || '<span style="color:var(--text-tertiary);font-style:italic;">Annotation loading…</span>'}</div>
+      <div class="tl-meta">
+        <div class="tl-title">${drawing.title || drawing.filename}</div>
+        <div class="tl-date">${drawing.drawn_date || ''}</div>
+        <div class="tl-extra">
+          <div class="tl-annotation">${annotationHtml}</div>
           <div class="tl-card-reactions" id="reactions-${drawing.id}"></div>
         </div>
       </div>
     `;
 
-    // No hover ↔ canvas linkage in timeline mode — scroll position drives everything
     list.appendChild(row);
   });
 
@@ -550,53 +546,50 @@ function renderTimeline(lensId) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   IntersectionObserver — one active card at a time
+   Scroll-driven activation — topmost fully/partially visible row wins
 ═══════════════════════════════════════════════════════════════════════ */
+let _scrollHandler = null;
+
 function setupScrollObserver(lensId) {
-  if (scrollObserver) scrollObserver.disconnect();
+  // Clean up previous listener (IntersectionObserver no longer used)
+  if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
 
   const scrollEl = document.getElementById('timeline-scroll');
   if (!scrollEl) return;
 
-  let currentActive = null;
+  // Remove previous scroll listener if any
+  if (_scrollHandler) { scrollEl.removeEventListener('scroll', _scrollHandler); }
 
-  scrollObserver = new IntersectionObserver(entries => {
-    // Sort by intersection ratio descending so the most-visible row wins
-    const intersecting = entries
-      .filter(e => e.isIntersecting && e.target.classList.contains('timeline-row'))
-      .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+  let lastActiveRow = null;
 
-    if (intersecting.length > 0) {
-      const entry = intersecting[0];
-      const drawingId = parseInt(entry.target.dataset.drawingId);
+  function activateRow(row) {
+    if (row === lastActiveRow) return;
+    if (lastActiveRow) lastActiveRow.classList.remove('tl-active');
+    row.classList.add('tl-active');
+    lastActiveRow = row;
+    activeDrawingId = parseInt(row.dataset.drawingId);
+    drawCanvas();
+  }
 
-      if (currentActive && currentActive !== entry.target) {
-        currentActive.classList.remove('tl-active');
+  function pickTopRow() {
+    const rows = scrollEl.querySelectorAll('.timeline-row');
+    const containerTop = scrollEl.getBoundingClientRect().top;
+    // Find the first row whose bottom edge is below the container top
+    // (i.e., at least partially visible at the top of the scroll area)
+    for (const row of rows) {
+      const rect = row.getBoundingClientRect();
+      if (rect.bottom > containerTop + 4) {   // +4px tolerance
+        activateRow(row);
+        return;
       }
-      entry.target.classList.add('tl-active');
-      currentActive = entry.target;
-      activeDrawingId = drawingId;
-      drawCanvas();
-    } else {
-      // Check if any non-intersecting entry was the current active
-      entries.forEach(entry => {
-        if (!entry.isIntersecting && currentActive === entry.target) {
-          entry.target.classList.remove('tl-active');
-          currentActive = null;
-          activeDrawingId = null;
-          drawCanvas();
-        }
-      });
     }
-  }, {
-    root: scrollEl,
-    // Asymmetric margin: top edge cuts off 30%, bottom only 20%
-    // This lets items near the bottom of the list activate before the spacer is visible
-    rootMargin: '-30% 0px -20% 0px',
-    threshold: [0.1, 0.5],
-  });
+  }
 
-  scrollEl.querySelectorAll('.timeline-row').forEach(row => scrollObserver.observe(row));
+  _scrollHandler = () => pickTopRow();
+  scrollEl.addEventListener('scroll', _scrollHandler, { passive: true });
+
+  // Activate immediately on render (first row starts active)
+  requestAnimationFrame(pickTopRow);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
