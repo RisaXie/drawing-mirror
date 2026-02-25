@@ -14,96 +14,91 @@
 </nav>
 
 <!-- ── Loading ─────────────────────────────────────────────────────────── -->
-<div class="container" id="wrap-loading" style="padding-top: 40px; display: none;">
+<div class="container" id="wrap-loading" style="padding-top:40px;display:none;">
   <p class="loading">Loading...</p>
 </div>
 
 <!-- ── No analysis yet ────────────────────────────────────────────────── -->
-<div class="container" id="wrap-none" style="padding-top: 40px; display: none;">
+<div class="container" id="wrap-none" style="padding-top:40px;display:none;">
   <h1>Your Drawing Archive</h1>
   <p class="mt-8" id="drawing-count-text"></p>
-  <div class="card mt-24" style="max-width: 540px;">
+  <div class="card mt-24" style="max-width:540px;">
     <h3>Discover Your Lenses</h3>
-    <p class="mt-8">
-      Drawing Mirror will analyze your archive and surface 3–5 meaningful patterns or themes
-      specific to your body of work — not generic categories, but angles that emerge from
-      <em>your</em> drawings.
-    </p>
-    <button class="btn btn-lens mt-16" onclick="startAnalysis()">
-      ✦ Discover Lenses
-    </button>
+    <p class="mt-8">Drawing Mirror will analyze your archive and surface 3–5 meaningful patterns specific to your body of work — angles that emerge from <em>your</em> drawings.</p>
+    <button class="btn btn-lens mt-16" onclick="startAnalysis()">✦ Discover Lenses</button>
   </div>
 </div>
 
 <!-- ── Analysis running ───────────────────────────────────────────────── -->
-<div class="container" id="wrap-running" style="padding-top: 40px; display: none;">
+<div class="container" id="wrap-running" style="padding-top:40px;display:none;">
   <h1>Analyzing Your Archive</h1>
   <p id="phase-text" class="mt-8 text-muted">Preparing...</p>
-  <div class="mt-24" style="max-width: 480px;">
-    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+  <div class="mt-24" style="max-width:480px;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <span class="text-sm text-muted" id="progress-label">0 / 0 drawings</span>
       <span class="text-sm text-muted" id="progress-pct">0%</span>
     </div>
-    <div class="progress-wrap">
-      <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
-    </div>
+    <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
   </div>
 </div>
 
 <!-- ── Failed ─────────────────────────────────────────────────────────── -->
-<div class="container" id="wrap-failed" style="padding-top: 40px; display: none;">
+<div class="container" id="wrap-failed" style="padding-top:40px;display:none;">
   <h1>Analysis Failed</h1>
-  <p id="error-text" class="mt-8" style="color: red;"></p>
+  <p id="error-text" class="mt-8" style="color:red;"></p>
   <button class="btn btn-ghost mt-16" onclick="startAnalysis()">Try Again</button>
 </div>
 
-<!-- ── UMAP embedding progress (after lenses ready) ──────────────────── -->
-<div class="container" id="wrap-embedding" style="padding-top: 40px; display: none;">
+<!-- ── Embedding progress ─────────────────────────────────────────────── -->
+<div class="container" id="wrap-embedding" style="padding-top:40px;display:none;">
   <h1>Building Visual Map</h1>
   <p class="mt-8 text-muted">Computing image embeddings for the visualization…</p>
-  <div class="mt-24" style="max-width: 480px;">
-    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+  <div class="mt-24" style="max-width:480px;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <span class="text-sm text-muted" id="emb-label">0 / 0</span>
       <span class="text-sm text-muted" id="emb-pct">0%</span>
     </div>
-    <div class="progress-wrap">
-      <div class="progress-bar" id="emb-bar" style="width: 0%"></div>
-    </div>
+    <div class="progress-wrap"><div class="progress-bar" id="emb-bar" style="width:0%"></div></div>
   </div>
 </div>
 
 <!-- ── Dual-pane map view ─────────────────────────────────────────────── -->
-<div id="wrap-map" class="map-layout" style="display: none;">
+<div id="wrap-map" class="map-layout" style="display:none;">
 
-  <!-- Left pane -->
-  <div class="map-left" id="map-left">
+  <!-- Left 50%: timeline / lens list -->
+  <div class="map-left">
 
-    <!-- Lens list panel -->
-    <div id="panel-lenses">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-        <span style="font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--text-tertiary); text-transform:uppercase;">Lenses</span>
-        <button class="btn btn-ghost text-sm" onclick="resetAnalysis()" style="padding:4px 8px; font-size:12px;">↺ Re-analyze</button>
+    <!-- PANEL A: Lens list -->
+    <div id="panel-lenses" class="panel-full">
+      <div class="panel-header">
+        <span class="panel-label">Lenses</span>
+        <button class="btn btn-ghost text-sm" onclick="resetAnalysis()" style="padding:4px 8px;font-size:12px;">↺ Re-analyze</button>
       </div>
-      <div id="lens-list"></div>
+      <div class="panel-scroll">
+        <div id="lens-list"></div>
+      </div>
     </div>
 
-    <!-- Timeline panel (shown after clicking a lens) -->
-    <div id="panel-timeline" style="display:none;">
-      <div style="margin-bottom:14px;">
-        <button class="btn btn-ghost text-sm" onclick="backToLenses()" style="padding:5px 10px; font-size:13px;">← Lenses</button>
+    <!-- PANEL B: Timeline -->
+    <div id="panel-timeline" class="panel-full" style="display:none;">
+      <div class="panel-header" style="flex-direction:column;align-items:flex-start;gap:5px;">
+        <button class="btn btn-ghost text-sm" onclick="backToLenses()" style="padding:4px 10px;font-size:13px;">← Lenses</button>
+        <div id="timeline-lens-name" class="timeline-title"></div>
+        <div id="timeline-lens-desc" class="timeline-desc"></div>
       </div>
-      <div id="timeline-lens-name" style="font-size:14px; font-weight:600; color:var(--lens-purple); margin-bottom:4px;"></div>
-      <div id="timeline-lens-desc" style="font-size:12px; color:var(--text-secondary); margin-bottom:16px; line-height:1.4;"></div>
-      <div id="timeline-list"></div>
+      <!-- Only this div scrolls -->
+      <div class="panel-scroll" id="timeline-scroll">
+        <div id="timeline-list"></div>
+      </div>
     </div>
 
   </div>
 
-  <!-- Right pane: Canvas -->
+  <!-- Right 50%: UMAP canvas — position:absolute, never moves -->
   <div class="map-right">
     <canvas id="umap-canvas"></canvas>
     <div id="umap-tooltip" class="umap-tooltip" style="display:none;"></div>
-    <div id="map-loading" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:var(--bg); font-size:14px; color:var(--text-tertiary);">
+    <div id="map-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);font-size:14px;color:var(--text-tertiary);">
       Loading map…
     </div>
   </div>
@@ -113,71 +108,59 @@
 <script src="/static/app.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════════
-   State
+   Global state
 ═══════════════════════════════════════════════════════════════════════ */
-let pollingInterval   = null;
+let pollingInterval    = null;
 let embPollingInterval = null;
 
-// Map data
-let allPoints        = [];          // [{drawing_id, x, y, filename, title, drawn_date, thumbnail_url}]
-let lensData         = [];          // [{id, name, description, relevant_count, drawingIds: Set}]
-let lensRelevantMap  = {};          // { lens_id: Set<drawing_id> }
-let thumbImages      = {};          // { drawing_id: HTMLImageElement } (pre-loaded)
+let allPoints         = [];   // [{drawing_id, x, y, filename, title, drawn_date, thumbnail_url}]
+let lensData          = [];
+let lensRelevantMap   = {};   // { lens_id: Set<drawing_id> }
+let lensDrawingsCache = {};   // { lens_id: [{id, title, drawn_date, annotation, thumbnail_url, ...}] }
+let thumbImages       = {};   // { drawing_id: HTMLImageElement }
+let userReactions     = {};   // { drawing_id: {reaction_type, id} } — for active lens
 
-// Interaction state
-let mapMode          = 'lenses';    // 'lenses' | 'timeline'
-let activeLensId     = null;
-let hoveredLensId    = null;
+let mapMode       = 'lenses';
+let activeLensId  = null;
+let hoveredLensId = null;
 let hoveredDrawingId = null;
+let activeDrawingId  = null;  // the scroll-center drawing in timeline mode
 
-// Canvas layout
 let canvas, ctx;
-let pointRects       = [];          // [{drawing_id, cx, cy, half}] for hit-testing
-const THUMB_SIZE     = 48;
-const THUMB_HALF     = THUMB_SIZE / 2;
-const FOCUS_SIZE     = 64;
-const FOCUS_HALF     = FOCUS_SIZE / 2;
-const CANVAS_PAD     = 40;         // px margin inside canvas
+let pointRects = [];
+
+const THUMB_HALF = 14;
+const FOCUS_HALF = 22;
+const CANVAS_PAD = 32;
+
+let scrollObserver = null;
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Init
+   Init / pipeline
 ═══════════════════════════════════════════════════════════════════════ */
 async function init() {
   if (!State.userId) { window.location.href = '/'; return; }
   document.getElementById('nav-user').textContent = State.username;
   showState('loading');
-
   const status = await API.get(`/archive/status?user_id=${State.userId}`);
   await handleArchiveStatus(status);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Archive pipeline state machine
-═══════════════════════════════════════════════════════════════════════ */
 async function handleArchiveStatus(status) {
-  if (status.status === 'not_started' ||
-      (status.status === 'failed' && !status.has_lenses)) {
+  if (status.status === 'not_started' || (status.status === 'failed' && !status.has_lenses)) {
     try {
-      const drawings = await API.get(`/drawings?user_id=${State.userId}`);
+      const d = await API.get(`/drawings?user_id=${State.userId}`);
       document.getElementById('drawing-count-text').textContent =
-        `${drawings.length} drawing${drawings.length !== 1 ? 's' : ''} ready for analysis`;
+        `${d.length} drawing${d.length !== 1 ? 's' : ''} ready for analysis`;
     } catch(e) {}
-
     if (status.status === 'failed') {
       document.getElementById('error-text').textContent = status.error_message || 'Unknown error';
       showState('failed');
-    } else {
-      showState('none');
-    }
-
+    } else { showState('none'); }
   } else if (status.status === 'running' || status.status === 'pending') {
-    showState('running');
-    updateProgress(status);
-    startPolling();
-
+    showState('running'); updateProgress(status); startPolling();
   } else if (status.status === 'complete' || status.has_lenses) {
     await loadLensesAndStartEmbedding();
-
   } else if (status.status === 'failed') {
     document.getElementById('error-text').textContent = status.error_message || 'Unknown error';
     showState('failed');
@@ -186,20 +169,13 @@ async function handleArchiveStatus(status) {
 
 function updateProgress(status) {
   const phase = status.phase || 'preparing';
-  const phaseLabels = {
-    'batch_analysis': 'Analyzing drawings…',
-    'lens_discovery': 'Discovering lenses…',
-    'done': 'Finishing up…',
-  };
-  document.getElementById('phase-text').textContent = phaseLabels[phase] || 'Processing…';
-
-  const total = status.total_drawings || 1;
-  const done  = status.analyzed_count || 0;
-  const pct   = phase === 'lens_discovery' ? 95 : Math.round((done / total) * 90);
-
+  const labels = { batch_analysis: 'Analyzing drawings…', lens_discovery: 'Discovering lenses…', done: 'Finishing up…' };
+  document.getElementById('phase-text').textContent = labels[phase] || 'Processing…';
+  const total = status.total_drawings || 1, done = status.analyzed_count || 0;
+  const pct = phase === 'lens_discovery' ? 95 : Math.round((done / total) * 90);
   document.getElementById('progress-label').textContent = `${done} / ${total} drawings`;
-  document.getElementById('progress-pct').textContent   = `${pct}%`;
-  document.getElementById('progress-bar').style.width   = pct + '%';
+  document.getElementById('progress-pct').textContent = `${pct}%`;
+  document.getElementById('progress-bar').style.width = pct + '%';
 }
 
 function startPolling() {
@@ -207,69 +183,55 @@ function startPolling() {
   pollingInterval = setInterval(async () => {
     try {
       const status = await API.get(`/archive/status?user_id=${State.userId}`);
-      if (status.status === 'running' || status.status === 'pending') {
-        updateProgress(status);
-      } else {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-        await handleArchiveStatus(status);
-      }
-    } catch(e) { console.error('Polling error:', e); }
+      if (status.status === 'running' || status.status === 'pending') { updateProgress(status); }
+      else { clearInterval(pollingInterval); pollingInterval = null; await handleArchiveStatus(status); }
+    } catch(e) { console.error(e); }
   }, 2500);
 }
 
 async function startAnalysis() {
   showState('running');
   document.getElementById('phase-text').textContent = 'Starting analysis…';
-  try {
-    await API.post(`/archive/analyze?user_id=${State.userId}`, {});
-    startPolling();
-  } catch(e) {
-    document.getElementById('error-text').textContent = e.message;
-    showState('failed');
-  }
+  try { await API.post(`/archive/analyze?user_id=${State.userId}`, {}); startPolling(); }
+  catch(e) { document.getElementById('error-text').textContent = e.message; showState('failed'); }
 }
 
 async function resetAnalysis() {
-  if (!confirm('This will delete all discovered lenses and re-analyze your archive. Continue?')) return;
+  if (!confirm('Delete all lenses and re-analyze? This cannot be undone.')) return;
   await startAnalysis();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Lenses + embedding pipeline
+   Load lenses + start embeddings
 ═══════════════════════════════════════════════════════════════════════ */
 async function loadLensesAndStartEmbedding() {
-  // Load lens metadata + per-lens drawing sets
   const lenses = await API.get(`/lenses?user_id=${State.userId}`);
   if (!lenses.length) { showState('none'); return; }
 
   lensData = lenses;
-  lensRelevantMap = {};
+  lensRelevantMap   = {};
+  lensDrawingsCache = {};
 
   for (const lens of lenses) {
     try {
       const ld = await API.get(`/lenses/${lens.id}/drawings?user_id=${State.userId}`);
-      const ids = new Set(ld.drawings.map(d => d.id));
-      lensRelevantMap[lens.id] = ids;
-      lens.drawingIds = ids;
+      lensDrawingsCache[lens.id] = ld.drawings;             // full objects with annotation
+      lensRelevantMap[lens.id]   = new Set(ld.drawings.map(d => d.id));
+      lens.drawingIds = lensRelevantMap[lens.id];
     } catch(e) {
-      lensRelevantMap[lens.id] = new Set();
+      lensDrawingsCache[lens.id] = [];
+      lensRelevantMap[lens.id]   = new Set();
       lens.drawingIds = new Set();
     }
   }
 
-  // Render left pane lens list (visible in map view)
   renderLensList();
 
-  // Trigger CLIP embedding (idempotent)
-  try { await API.post(`/embeddings/generate?user_id=${State.userId}`, {}); }
-  catch(e) { console.warn('Embedding generate failed:', e); }
+  try { await API.post(`/embeddings/generate?user_id=${State.userId}`, {}); } catch(e) {}
 
-  // Check if embeddings already done
   const embStatus = await API.get(`/embeddings/status?user_id=${State.userId}`);
-  if (embStatus.status === 'complete') {
-    await showMap();
-  } else {
+  if (embStatus.status === 'complete') { await showMap(); }
+  else {
     showState('embedding');
     updateEmbProgress(embStatus);
     startEmbPolling();
@@ -277,9 +239,8 @@ async function loadLensesAndStartEmbedding() {
 }
 
 function updateEmbProgress(s) {
-  const total = s.total || 1;
-  const done  = s.computed || 0;
-  const pct   = Math.round((done / total) * 100);
+  const total = s.total || 1, done = s.computed || 0;
+  const pct = Math.round((done / total) * 100);
   document.getElementById('emb-label').textContent = `${done} / ${total}`;
   document.getElementById('emb-pct').textContent   = `${pct}%`;
   document.getElementById('emb-bar').style.width   = pct + '%';
@@ -291,49 +252,34 @@ function startEmbPolling() {
     try {
       const s = await API.get(`/embeddings/status?user_id=${State.userId}`);
       updateEmbProgress(s);
-      if (s.status === 'complete') {
-        clearInterval(embPollingInterval);
-        embPollingInterval = null;
-        await showMap();
-      } else if (s.status === 'error') {
-        clearInterval(embPollingInterval);
-        embPollingInterval = null;
-        // Fall back to showing map without embeddings (impossible at this point)
-        document.getElementById('error-text').textContent = 'Embedding computation failed.';
-        showState('failed');
-      }
-    } catch(e) { console.error('Emb poll error:', e); }
+      if (s.status === 'complete') { clearInterval(embPollingInterval); embPollingInterval = null; await showMap(); }
+      else if (s.status === 'error') { clearInterval(embPollingInterval); embPollingInterval = null; showState('failed'); }
+    } catch(e) { console.error(e); }
   }, 2000);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Map view
+   Canvas / UMAP
 ═══════════════════════════════════════════════════════════════════════ */
 async function showMap() {
   showState('map');
-  canvas  = document.getElementById('umap-canvas');
-  ctx     = canvas.getContext('2d');
+  canvas = document.getElementById('umap-canvas');
+  ctx    = canvas.getContext('2d');
 
-  // Fetch UMAP points
   try {
     const data = await API.get(`/embeddings/umap?user_id=${State.userId}`);
     allPoints = data.points;
   } catch(e) {
-    console.error('UMAP fetch failed:', e);
     document.getElementById('map-loading').textContent = 'Failed to load map.';
     return;
   }
 
-  // Pre-load thumbnails
   await preloadThumbs();
+  await new Promise(r => requestAnimationFrame(r));
 
-  // Initial draw
-  resizeCanvas();
-  drawCanvas();
-
+  resizeCanvas(); drawCanvas();
   document.getElementById('map-loading').style.display = 'none';
 
-  // Wire up canvas events
   canvas.addEventListener('mousemove', onCanvasMouseMove);
   canvas.addEventListener('mouseleave', onCanvasMouseLeave);
   canvas.addEventListener('click', onCanvasClick);
@@ -346,8 +292,7 @@ function preloadThumbs() {
     if (!pending) { resolve(); return; }
     allPoints.forEach(pt => {
       if (!pt.thumbnail_url) { pending--; if (!pending) resolve(); return; }
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
+      const img = new Image(); img.crossOrigin = 'anonymous';
       img.onload  = () => { thumbImages[pt.drawing_id] = img; pending--; if (!pending) resolve(); };
       img.onerror = () => { pending--; if (!pending) resolve(); };
       img.src = pt.thumbnail_url;
@@ -357,59 +302,51 @@ function preloadThumbs() {
 
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width  = rect.width  * dpr;
-  canvas.height = rect.height * dpr;
-  canvas.style.width  = rect.width  + 'px';
-  canvas.style.height = rect.height + 'px';
-  ctx.scale(dpr, dpr);
-  computePointLayout(rect.width, rect.height);
+  const parent = canvas.parentElement;
+  const w = parent.offsetWidth, h = parent.offsetHeight;
+  canvas.width  = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  computePointLayout(w, h);
 }
 
 function computePointLayout(w, h) {
-  pointRects = allPoints.map(pt => {
-    const cx = CANVAS_PAD + pt.x * (w - CANVAS_PAD * 2);
-    const cy = CANVAS_PAD + pt.y * (h - CANVAS_PAD * 2);
-    return { drawing_id: pt.drawing_id, cx, cy, half: THUMB_HALF };
-  });
+  pointRects = allPoints.map(pt => ({
+    drawing_id: pt.drawing_id,
+    cx: CANVAS_PAD + pt.x * (w - CANVAS_PAD * 2),
+    cy: CANVAS_PAD + pt.y * (h - CANVAS_PAD * 2),
+  }));
 }
 
 function drawCanvas() {
   if (!ctx) return;
   const dpr = window.devicePixelRatio || 1;
-  const w   = canvas.width  / dpr;
-  const h   = canvas.height / dpr;
-
+  const w = canvas.width / dpr, h = canvas.height / dpr;
   ctx.clearRect(0, 0, w, h);
 
-  // Determine highlight sets
-  let highlightSet   = null;   // Set<drawing_id> to highlight (null = all normal)
-  let focusId        = null;   // single drawing_id to focus
-
+  // In timeline mode, highlight the active (center) drawing; in lens mode, highlight hovered lens
+  let highlightSet = null, focusId = null;
   if (mapMode === 'lenses' && hoveredLensId != null) {
     highlightSet = lensRelevantMap[hoveredLensId] || new Set();
-  } else if (mapMode === 'timeline' && hoveredDrawingId != null) {
-    highlightSet = new Set([hoveredDrawingId]);
-    focusId      = hoveredDrawingId;
+  } else if (mapMode === 'timeline') {
+    if (activeDrawingId != null) {
+      highlightSet = new Set([activeDrawingId]);
+      focusId = activeDrawingId;
+    } else if (hoveredDrawingId != null) {
+      highlightSet = new Set([hoveredDrawingId]);
+    }
   }
 
-  // Draw points back-to-front: dimmed first, then normal, then highlighted/focused
   const buckets = { dim: [], normal: [], highlight: [], focus: [] };
-
   allPoints.forEach((pt, i) => {
     const id = pt.drawing_id;
-    if (highlightSet === null) {
-      buckets.normal.push(i);
-    } else if (focusId === id) {
-      buckets.focus.push(i);
-    } else if (highlightSet.has(id)) {
-      buckets.highlight.push(i);
-    } else {
-      buckets.dim.push(i);
-    }
+    if      (highlightSet === null)  buckets.normal.push(i);
+    else if (focusId === id)         buckets.focus.push(i);
+    else if (highlightSet.has(id))   buckets.highlight.push(i);
+    else                             buckets.dim.push(i);
   });
 
-  drawPoints(buckets.dim,       0.12, THUMB_HALF, null);
+  drawPoints(buckets.dim,       0.08, THUMB_HALF, null);
   drawPoints(buckets.normal,    1.0,  THUMB_HALF, null);
   drawPoints(buckets.highlight, 1.0,  THUMB_HALF, '#5856d6');
   drawPoints(buckets.focus,     1.0,  FOCUS_HALF, '#5856d6');
@@ -417,55 +354,36 @@ function drawCanvas() {
 
 function drawPoints(indices, alpha, half, strokeColor) {
   indices.forEach(i => {
-    const pt  = allPoints[i];
-    const pr  = pointRects[i];
-    const img = thumbImages[pt.drawing_id];
+    const pt = allPoints[i], pr = pointRects[i], img = thumbImages[pt.drawing_id];
     const { cx, cy } = pr;
-
     ctx.save();
     ctx.globalAlpha = alpha;
-
     if (img) {
-      // Clip to rounded square
-      const r = 4;
-      ctx.beginPath();
-      ctx.roundRect(cx - half, cy - half, half * 2, half * 2, r);
-      ctx.clip();
-      ctx.drawImage(img, cx - half, cy - half, half * 2, half * 2);
+      const size = half * 2;
+      ctx.beginPath(); ctx.roundRect(cx - half, cy - half, size, size, 3); ctx.clip();
+      const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+      const scale = Math.max(size / iw, size / ih);
+      const sw = size / scale, sh = size / scale;
+      ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, cx - half, cy - half, size, size);
     } else {
-      // Fallback dot
       ctx.fillStyle = '#c7c7ef';
-      ctx.beginPath();
-      ctx.arc(cx, cy, half * 0.6, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, half * 0.6, 0, Math.PI * 2); ctx.fill();
     }
-
     if (strokeColor) {
-      ctx.restore();
-      ctx.save();
-      ctx.globalAlpha = alpha;
+      ctx.restore(); ctx.save(); ctx.globalAlpha = alpha;
       ctx.strokeStyle = strokeColor;
-      ctx.lineWidth   = half === FOCUS_HALF ? 3 : 2;
-      ctx.beginPath();
-      ctx.roundRect(cx - half, cy - half, half * 2, half * 2, 4);
-      ctx.stroke();
+      ctx.lineWidth = half === FOCUS_HALF ? 3 : 2;
+      ctx.beginPath(); ctx.roundRect(cx - half, cy - half, half * 2, half * 2, 3); ctx.stroke();
     }
-
     ctx.restore();
   });
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Canvas interaction
-═══════════════════════════════════════════════════════════════════════ */
 function hitTest(mx, my) {
-  // Returns drawing_id or null
   for (let i = pointRects.length - 1; i >= 0; i--) {
     const { cx, cy, drawing_id } = pointRects[i];
-    const half = drawing_id === hoveredDrawingId ? FOCUS_HALF : THUMB_HALF;
-    if (Math.abs(mx - cx) <= half && Math.abs(my - cy) <= half) {
-      return drawing_id;
-    }
+    const half = drawing_id === (activeDrawingId || hoveredDrawingId) ? FOCUS_HALF : THUMB_HALF;
+    if (Math.abs(mx - cx) <= half && Math.abs(my - cy) <= half) return drawing_id;
   }
   return null;
 }
@@ -478,51 +396,34 @@ function getCanvasCoords(e) {
 function onCanvasMouseMove(e) {
   const { mx, my } = getCanvasCoords(e);
   const hit = hitTest(mx, my);
-
   if (hit !== hoveredDrawingId) {
-    hoveredDrawingId = hit;
-    drawCanvas();
-
-    if (hit) {
-      const pt  = allPoints.find(p => p.drawing_id === hit);
-      const tip = document.getElementById('umap-tooltip');
-      tip.innerHTML = `
-        <strong>${pt.title || pt.filename}</strong><br>
-        <span style="color:var(--text-tertiary)">${pt.drawn_date || ''}</span>
-      `;
-      tip.style.display = 'block';
-      tip.style.left    = (mx + 12) + 'px';
-      tip.style.top     = (my - 10) + 'px';
-      canvas.style.cursor = 'pointer';
-    } else {
-      document.getElementById('umap-tooltip').style.display = 'none';
-      canvas.style.cursor = '';
-    }
-  } else if (hit) {
-    // Just move the tooltip
+    hoveredDrawingId = hit; drawCanvas();
     const tip = document.getElementById('umap-tooltip');
-    tip.style.left = (mx + 12) + 'px';
-    tip.style.top  = (my - 10) + 'px';
+    if (hit) {
+      const pt = allPoints.find(p => p.drawing_id === hit);
+      tip.innerHTML = `<strong>${pt.title || pt.filename}</strong><br><span style="color:var(--text-tertiary)">${pt.drawn_date || ''}</span>`;
+      tip.style.display = 'block'; tip.style.left = (mx + 12) + 'px'; tip.style.top = (my - 10) + 'px';
+      canvas.style.cursor = 'pointer';
+    } else { tip.style.display = 'none'; canvas.style.cursor = ''; }
+  } else if (hit) {
+    const tip = document.getElementById('umap-tooltip');
+    tip.style.left = (mx + 12) + 'px'; tip.style.top = (my - 10) + 'px';
   }
 }
 
 function onCanvasMouseLeave() {
   hoveredDrawingId = null;
   document.getElementById('umap-tooltip').style.display = 'none';
-  canvas.style.cursor = '';
-  drawCanvas();
+  canvas.style.cursor = ''; drawCanvas();
 }
 
 function onCanvasClick(e) {
-  const { mx, my } = getCanvasCoords(e);
-  const hit = hitTest(mx, my);
-  if (hit) {
-    window.location.href = `/drawing-detail?drawing_id=${hit}&user_id=${State.userId}`;
-  }
+  const hit = hitTest(...Object.values(getCanvasCoords(e)));
+  if (hit) window.location.href = `/drawing-detail?drawing_id=${hit}&user_id=${State.userId}`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Left pane: Lens list
+   Lens list panel
 ═══════════════════════════════════════════════════════════════════════ */
 function renderLensList() {
   const list = document.getElementById('lens-list');
@@ -530,72 +431,54 @@ function renderLensList() {
   lensData.forEach(lens => {
     const div = document.createElement('div');
     div.className = 'lens-list-item';
-    div.dataset.lensId = lens.id;
-    div.innerHTML = `
-      <div class="lens-name">${lens.name}</div>
-      <div class="lens-count">${lens.relevant_count || 0} drawings</div>
-    `;
-    div.addEventListener('mouseenter', () => onLensHover(lens.id));
-    div.addEventListener('mouseleave', () => onLensLeave());
-    div.addEventListener('click',      () => onLensClick(lens.id));
+    div.innerHTML = `<div class="lens-name">${lens.name}</div><div class="lens-count">${lens.relevant_count || 0} drawings</div>`;
+    div.addEventListener('mouseenter', () => { if (mapMode === 'lenses') { hoveredLensId = lens.id; drawCanvas(); } });
+    div.addEventListener('mouseleave', () => { if (mapMode === 'lenses') { hoveredLensId = null; drawCanvas(); } });
+    div.addEventListener('click', () => onLensClick(lens.id));
     list.appendChild(div);
   });
 }
 
-function onLensHover(lensId) {
-  if (mapMode !== 'lenses') return;
-  hoveredLensId = lensId;
-  drawCanvas();
-}
-
-function onLensLeave() {
-  if (mapMode !== 'lenses') return;
-  hoveredLensId = null;
-  drawCanvas();
-}
-
 function onLensClick(lensId) {
-  mapMode     = 'timeline';
-  activeLensId = lensId;
-  hoveredLensId = null;
+  mapMode = 'timeline'; activeLensId = lensId; hoveredLensId = null; activeDrawingId = null;
 
   const lens = lensData.find(l => l.id === lensId);
   document.getElementById('timeline-lens-name').textContent = lens.name;
   document.getElementById('timeline-lens-desc').textContent = lens.description;
 
   renderTimeline(lensId);
-
   document.getElementById('panel-lenses').style.display   = 'none';
   document.getElementById('panel-timeline').style.display = '';
-
   drawCanvas();
 }
 
 function backToLenses() {
-  mapMode      = 'lenses';
-  activeLensId = null;
-  hoveredDrawingId = null;
-
+  mapMode = 'lenses'; activeLensId = null; hoveredDrawingId = null; activeDrawingId = null;
+  if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
   document.getElementById('panel-timeline').style.display = 'none';
   document.getElementById('panel-lenses').style.display   = '';
   drawCanvas();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Left pane: Timeline
+   Timeline panel
 ═══════════════════════════════════════════════════════════════════════ */
 function renderTimeline(lensId) {
-  const relevantIds = lensRelevantMap[lensId] || new Set();
-  const pts = allPoints
-    .filter(p => relevantIds.has(p.drawing_id))
-    .sort((a, b) => (a.drawn_date || '').localeCompare(b.drawn_date || ''));
+  const drawings = lensDrawingsCache[lensId] || [];
+  // Sort chronologically (already sorted from API, but just in case)
+  const sorted = [...drawings].sort((a, b) => (a.drawn_date || '').localeCompare(b.drawn_date || ''));
 
   const list = document.getElementById('timeline-list');
   list.innerHTML = '';
 
+  if (!sorted.length) {
+    list.innerHTML = '<p class="text-sm text-muted" style="padding:8px 0;">No drawings above relevance threshold.</p>';
+    return;
+  }
+
   let lastYear = null;
-  pts.forEach(pt => {
-    const year = pt.drawn_date ? pt.drawn_date.slice(0, 4) : null;
+  sorted.forEach(drawing => {
+    const year = drawing.drawn_date ? drawing.drawn_date.slice(0, 4) : null;
     if (year && year !== lastYear) {
       lastYear = year;
       const yl = document.createElement('div');
@@ -604,43 +487,154 @@ function renderTimeline(lensId) {
       list.appendChild(yl);
     }
 
+    const thumb = thumbImages[drawing.id];
+    const thumbSrc  = thumb ? thumb.src : (drawing.thumbnail_url || '');
+    const fullSrc   = `/api/drawings/${drawing.id}/image`;
+
     const row = document.createElement('div');
     row.className = 'timeline-row';
-    const thumb = thumbImages[pt.drawing_id];
-    const imgSrc = thumb ? thumb.src : '';
+    row.dataset.drawingId = drawing.id;
+
+    // Compact view (shown by default, when not tl-active)
     row.innerHTML = `
-      ${imgSrc ? `<img src="${imgSrc}" alt="">` : `<div style="width:36px;height:36px;background:var(--border);border-radius:3px;flex-shrink:0;"></div>`}
-      <div style="flex:1; min-width:0;">
-        <div style="font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${pt.title || pt.filename}</div>
-        <div style="font-size:11px; color:var(--text-tertiary);">${pt.drawn_date || ''}</div>
+      <div class="tl-compact">
+        <div class="tl-thumb-wrap">
+          ${thumbSrc ? `<img class="tl-thumb" src="${thumbSrc}" alt="">` : `<div class="tl-thumb tl-thumb-placeholder"></div>`}
+        </div>
+        <div class="tl-meta">
+          <div class="tl-title">${drawing.title || drawing.filename}</div>
+          <div class="tl-date">${drawing.drawn_date || ''}</div>
+        </div>
+      </div>
+
+      <div class="tl-card">
+        <div class="tl-card-img-wrap">
+          <img class="tl-card-img" src="${fullSrc}" alt="${drawing.title || drawing.filename}">
+        </div>
+        <div class="tl-card-body">
+          <div class="tl-card-title">${drawing.title || drawing.filename}</div>
+          <div class="tl-card-date">${drawing.drawn_date || ''}</div>
+          <div class="tl-card-annotation">${drawing.annotation || '<span style="color:var(--text-tertiary);font-style:italic;">Annotation loading…</span>'}</div>
+          <div class="tl-card-reactions" id="reactions-${drawing.id}"></div>
+        </div>
       </div>
     `;
-    row.addEventListener('mouseenter', () => { hoveredDrawingId = pt.drawing_id; drawCanvas(); });
-    row.addEventListener('mouseleave', () => { hoveredDrawingId = null; drawCanvas(); });
-    row.addEventListener('click',      () => {
-      window.location.href = `/drawing-detail?drawing_id=${pt.drawing_id}&user_id=${State.userId}&lens_id=${lensId}`;
-    });
+
+    row.addEventListener('mouseenter', () => { if (!row.classList.contains('tl-active')) { hoveredDrawingId = drawing.id; drawCanvas(); } });
+    row.addEventListener('mouseleave', () => { if (!row.classList.contains('tl-active')) { hoveredDrawingId = null; drawCanvas(); } });
     list.appendChild(row);
   });
 
-  if (!pts.length) {
-    list.innerHTML = '<p class="text-sm text-muted" style="padding:8px 0;">No drawings above relevance threshold.</p>';
+  // Load existing reactions for this lens's drawings
+  loadReactions(sorted.map(d => d.id));
+  setupScrollObserver(lensId);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   IntersectionObserver — one active card at a time
+═══════════════════════════════════════════════════════════════════════ */
+function setupScrollObserver(lensId) {
+  if (scrollObserver) scrollObserver.disconnect();
+
+  const scrollEl = document.getElementById('timeline-scroll');
+  if (!scrollEl) return;
+
+  let currentActive = null;
+
+  scrollObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.target.classList.contains('timeline-row')) return;
+      const drawingId = parseInt(entry.target.dataset.drawingId);
+
+      if (entry.isIntersecting) {
+        // Deactivate previous
+        if (currentActive && currentActive !== entry.target) {
+          currentActive.classList.remove('tl-active');
+        }
+        entry.target.classList.add('tl-active');
+        currentActive = entry.target;
+
+        // Sync map highlight
+        activeDrawingId  = drawingId;
+        hoveredDrawingId = null;
+        drawCanvas();
+
+        // Scroll map point into visual prominence (no scroll, just redraw)
+      } else {
+        if (currentActive === entry.target) {
+          entry.target.classList.remove('tl-active');
+          currentActive = null;
+          activeDrawingId = null;
+          drawCanvas();
+        }
+      }
+    });
+  }, {
+    root: scrollEl,
+    rootMargin: '-35% 0px -35% 0px',   // center 30% of the scroll area
+    threshold: 0.1,
+  });
+
+  scrollEl.querySelectorAll('.timeline-row').forEach(row => scrollObserver.observe(row));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Reactions
+═══════════════════════════════════════════════════════════════════════ */
+async function loadReactions(drawingIds) {
+  for (const did of drawingIds) {
+    try {
+      const reactions = await API.get(`/reactions?drawing_id=${did}&user_id=${State.userId}`);
+      const lensAnnotation = reactions.find(r => r.target_type === 'lens_annotation' && r.target_id == String(activeLensId));
+      const drawingAnalysis = reactions.find(r => r.target_type === 'drawing_analysis');
+      userReactions[did] = { lens: lensAnnotation, analysis: drawingAnalysis };
+      renderReactionButtons(did);
+    } catch(e) {}
   }
+}
+
+function renderReactionButtons(drawingId) {
+  const el = document.getElementById(`reactions-${drawingId}`);
+  if (!el) return;
+
+  const existing = (userReactions[drawingId] || {}).lens;
+  const reactionType = existing ? existing.reaction_type : null;
+
+  const agreeClass    = reactionType === 'agree'    ? 'tl-rxn-btn active-agree'    : 'tl-rxn-btn';
+  const disagreeClass = reactionType === 'disagree' ? 'tl-rxn-btn active-disagree' : 'tl-rxn-btn';
+
+  el.innerHTML = `
+    <button class="${agreeClass}"    data-did="${drawingId}" data-type="agree"    onclick="handleReaction(${drawingId},'agree')">✓ Agree</button>
+    <button class="${disagreeClass}" data-did="${drawingId}" data-type="disagree" onclick="handleReaction(${drawingId},'disagree')">✗ Disagree</button>
+    <a class="tl-rxn-link" href="/drawing-detail?drawing_id=${drawingId}&user_id=${State.userId}&lens_id=${activeLensId}">View detail →</a>
+  `;
+}
+
+async function handleReaction(drawingId, reactionType) {
+  try {
+    await API.post('/reactions', {
+      user_id:       State.userId,
+      drawing_id:    drawingId,
+      target_type:   'lens_annotation',
+      target_id:     String(activeLensId),
+      reaction_type: reactionType,
+    });
+    // Refresh this drawing's reactions
+    const reactions = await API.get(`/reactions?drawing_id=${drawingId}&user_id=${State.userId}`);
+    const lensAnnotation = reactions.find(r => r.target_type === 'lens_annotation' && r.target_id == String(activeLensId));
+    userReactions[drawingId] = { ...userReactions[drawingId], lens: lensAnnotation };
+    renderReactionButtons(drawingId);
+  } catch(e) { console.error('Reaction failed:', e); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
    showState
 ═══════════════════════════════════════════════════════════════════════ */
 function showState(name) {
-  const states = ['loading', 'none', 'running', 'failed', 'embedding', 'map'];
-  states.forEach(s => {
+  ['loading','none','running','failed','embedding','map'].forEach(s => {
     const el = document.getElementById(s === 'map' ? 'wrap-map' : 'wrap-' + s);
     if (!el) return;
-    if (s === 'map') {
-      el.style.display = s === name ? 'flex' : 'none';
-    } else {
-      el.style.display = s === name ? '' : 'none';
-    }
+    el.style.display = s === name ? (s === 'map' ? 'flex' : '') : 'none';
   });
 }
 

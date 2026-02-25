@@ -28,6 +28,8 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body { height: 100%; }
+
 a { color: inherit; text-decoration: none; }
 button { cursor: pointer; border: none; background: none; font-family: inherit; font-size: inherit; }
 
@@ -170,39 +172,88 @@ p  { color: var(--text-secondary); }
 
 /* ── Phase 4: Dual-pane Map Layout ─────────────────────────────────── */
 
-/* Full-height split layout (fills viewport below nav) */
+/* Outer flex container — fills exactly the space below the sticky nav */
 .map-layout {
   display: flex;
-  height: calc(100vh - 61px);  /* 61px = nav height */
+  height: calc(100vh - 61px);
   overflow: hidden;
 }
 
-/* Left sidebar */
+/* ── Left pane: 50/50 split — flex column so header fixed, list scrolls ── */
 .map-left {
-  width: 280px;
-  flex-shrink: 0;
-  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--border);
-  padding: 16px;
   background: var(--surface);
+  min-width: 0;
+  /* NO overflow here — overflow is on .panel-scroll only */
 }
 
-/* Right canvas pane */
+/* A panel that fills the full height of .map-left */
+.panel-full {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;   /* allow flex children to shrink */
+}
+
+/* Fixed header region inside a panel */
+.panel-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+/* Scrollable list region — takes remaining height */
+.panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px 40px;   /* bottom pad so last item isn't flush */
+}
+
+/* Timeline header extras */
+.timeline-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lens-purple);
+  line-height: 1.3;
+}
+.timeline-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ── Right canvas pane: fills remaining width, NEVER scrolls ── */
 .map-right {
   flex: 1;
-  position: relative;
+  position: relative;   /* anchor for absolute canvas + tooltip */
   overflow: hidden;
   background: var(--bg);
 }
 
+/* Canvas is absolutely positioned to fill map-right exactly */
 #umap-canvas {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
   cursor: default;
 }
 
-/* Hover tooltip on canvas */
+/* Hover tooltip */
 .umap-tooltip {
   position: absolute;
   background: var(--surface);
@@ -217,7 +268,7 @@ p  { color: var(--text-secondary); }
   max-width: 200px;
 }
 
-/* Lens list items in left pane */
+/* ── Lens list ── */
 .lens-list-item {
   padding: 10px 8px;
   border-radius: var(--radius-sm);
@@ -225,50 +276,180 @@ p  { color: var(--text-secondary); }
   margin-bottom: 2px;
   transition: background 0.12s;
 }
-.lens-list-item:hover {
-  background: var(--lens-purple-light);
-}
+.lens-list-item:hover { background: var(--lens-purple-light); }
 .lens-list-item .lens-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--lens-purple);
   margin-bottom: 2px;
 }
-.lens-list-item .lens-count {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
+.lens-list-item .lens-count { font-size: 11px; color: var(--text-tertiary); }
 
-/* Timeline in left pane */
+/* ── Timeline year divider ── */
 .timeline-year-label {
   font-size: 11px;
   color: var(--text-tertiary);
   font-weight: 700;
-  padding: 12px 4px 4px;
+  padding: 14px 6px 4px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
+/* ── Timeline row wrapper — contains compact OR card view ── */
 .timeline-row {
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: background 0.15s;
+  overflow: hidden;
+}
+.timeline-row:not(.tl-active):hover { background: var(--lens-purple-light); }
+
+/* ── Compact view (default) ── */
+.tl-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  opacity: 0.45;
+  transform: scale(0.92);
+  transform-origin: left center;
+  transition: opacity 0.25s ease, transform 0.25s ease, max-height 0.35s ease;
+  max-height: 80px;
+}
+.timeline-row.tl-active .tl-compact {
+  max-height: 0;
+  opacity: 0;
+  transform: scale(0.88);
+  pointer-events: none;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+/* ── Expanded card view (shown when tl-active) ── */
+.tl-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease 0.05s;
+}
+.timeline-row.tl-active .tl-card {
+  max-height: 600px;
+  opacity: 1;
+}
+
+/* Card: full image — natural aspect ratio, no crop */
+.tl-card-img-wrap {
+  width: 100%;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.tl-card-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  max-height: 260px;
+}
+
+/* Card: body below image */
+.tl-card-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tl-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+.tl-card-date {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.tl-card-annotation {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.55;
+  margin-top: 2px;
+}
+
+/* Card: reaction row */
+.tl-card-reactions {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 4px;
-  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.tl-rxn-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
   cursor: pointer;
-  transition: background 0.12s;
+  transition: all 0.15s;
 }
-.timeline-row:hover {
-  background: var(--lens-purple-light);
+.tl-rxn-btn:hover { border-color: var(--text-secondary); color: var(--text); }
+.tl-rxn-btn.active-agree    { border-color: var(--agree-green);  color: var(--agree-green);  background: #f0fff4; }
+.tl-rxn-btn.active-disagree { border-color: var(--disagree-red); color: var(--disagree-red); background: #fff0f0; }
+
+.tl-rxn-link {
+  font-size: 12px;
+  color: var(--lens-purple);
+  text-decoration: none;
+  margin-left: auto;
+  white-space: nowrap;
+  opacity: 0.8;
+  transition: opacity 0.12s;
 }
-.timeline-row img {
-  width: 36px;
-  height: 36px;
-  object-fit: cover;
-  border-radius: 3px;
+.tl-rxn-link:hover { opacity: 1; }
+
+/* ── Compact thumbnail wrapper ── */
+.tl-thumb-wrap {
   flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  overflow: hidden;
   border: 1px solid var(--border);
 }
+.tl-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tl-thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--border);
+}
+
+.tl-meta { flex: 1; min-width: 0; }
+.tl-title {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+.tl-date { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
 
 /* Utility */
 .mt-8  { margin-top: 8px; }
