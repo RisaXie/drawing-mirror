@@ -5,8 +5,9 @@ anthropic>=0.40.0
 Pillow>=11.0.0
 pydantic-settings>=2.6.0
 python-multipart>=0.0.17
+openpyxl>=3.1.0
 
-# Phase 4 (uncomment when ready):
-# open-clip-torch>=2.26.1
-# sqlite-vec>=0.1.0
-# torch>=2.0.0
+# Phase 4 — CLIP + UMAP visualization
+open-clip-torch>=2.26.1
+torch>=2.0.0
+umap-learn>=0.5.0

@@ -168,6 +168,108 @@ p  { color: var(--text-secondary); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .fade-in { animation: fadeIn 0.3s ease forwards; }
 
+/* ── Phase 4: Dual-pane Map Layout ─────────────────────────────────── */
+
+/* Full-height split layout (fills viewport below nav) */
+.map-layout {
+  display: flex;
+  height: calc(100vh - 61px);  /* 61px = nav height */
+  overflow: hidden;
+}
+
+/* Left sidebar */
+.map-left {
+  width: 280px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  background: var(--surface);
+}
+
+/* Right canvas pane */
+.map-right {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+#umap-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: default;
+}
+
+/* Hover tooltip on canvas */
+.umap-tooltip {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  pointer-events: none;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+  max-width: 200px;
+}
+
+/* Lens list items in left pane */
+.lens-list-item {
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: background 0.12s;
+}
+.lens-list-item:hover {
+  background: var(--lens-purple-light);
+}
+.lens-list-item .lens-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lens-purple);
+  margin-bottom: 2px;
+}
+.lens-list-item .lens-count {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* Timeline in left pane */
+.timeline-year-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 700;
+  padding: 12px 4px 4px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.timeline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.timeline-row:hover {
+  background: var(--lens-purple-light);
+}
+.timeline-row img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
 /* Utility */
 .mt-8  { margin-top: 8px; }
 .mt-16 { margin-top: 16px; }

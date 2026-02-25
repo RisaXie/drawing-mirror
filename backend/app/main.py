@@ -14,7 +14,7 @@ from app.services.drawing_loader import (
     scan_user_dataset, scan_catalog_dataset,
     generate_thumbnail, get_image_dimensions,
 )
-from app.routers import users, drawings, archive, lenses, reactions
+from app.routers import users, drawings, archive, lenses, reactions, embeddings
 
 BASE_DIR = Path(__file__).parent
 WEB_DIR = BASE_DIR / "web"
@@ -232,7 +232,8 @@ app.include_router(users.router,    prefix="/api/users",    tags=["users"])
 app.include_router(drawings.router, prefix="/api/drawings", tags=["drawings"])
 app.include_router(archive.router,  prefix="/api/archive",  tags=["archive"])
 app.include_router(lenses.router,   prefix="/api/lenses",   tags=["lenses"])
-app.include_router(reactions.router, prefix="/api/reactions", tags=["reactions"])
+app.include_router(reactions.router,   prefix="/api/reactions",   tags=["reactions"])
+app.include_router(embeddings.router,  prefix="/api/embeddings",  tags=["embeddings"])
 
 
 # ─── HTML Pages ───────────────────────────────────────────────────────────────
