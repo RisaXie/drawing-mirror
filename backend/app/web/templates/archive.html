@@ -123,8 +123,7 @@ let userReactions     = {};   // { drawing_id: {reaction_type, id} } — for act
 let mapMode       = 'lenses';
 let activeLensId  = null;
 let hoveredLensId = null;
-let hoveredDrawingId = null;
-let activeDrawingId  = null;  // the scroll-center drawing in timeline mode
+let activeDrawingId  = null;  // the scroll-center drawing in timeline mode (scroll only, no hover)
 
 let canvas, ctx;
 let pointRects = [];
@@ -324,7 +323,8 @@ function drawCanvas() {
   const w = canvas.width / dpr, h = canvas.height / dpr;
   ctx.clearRect(0, 0, w, h);
 
-  // In timeline mode, highlight the active (center) drawing; in lens mode, highlight hovered lens
+  // In timeline mode, highlight the scroll-center drawing only (no hover interaction)
+  // In lens mode, highlight drawings of the hovered lens
   let highlightSet = null, focusId = null;
   if (mapMode === 'lenses' && hoveredLensId != null) {
     highlightSet = lensRelevantMap[hoveredLensId] || new Set();
@@ -332,8 +332,6 @@ function drawCanvas() {
     if (activeDrawingId != null) {
       highlightSet = new Set([activeDrawingId]);
       focusId = activeDrawingId;
-    } else if (hoveredDrawingId != null) {
-      highlightSet = new Set([hoveredDrawingId]);
     }
   }
 
@@ -382,7 +380,7 @@ function drawPoints(indices, alpha, half, strokeColor) {
 function hitTest(mx, my) {
   for (let i = pointRects.length - 1; i >= 0; i--) {
     const { cx, cy, drawing_id } = pointRects[i];
-    const half = drawing_id === (activeDrawingId || hoveredDrawingId) ? FOCUS_HALF : THUMB_HALF;
+    const half = drawing_id === activeDrawingId ? FOCUS_HALF : THUMB_HALF;
     if (Math.abs(mx - cx) <= half && Math.abs(my - cy) <= half) return drawing_id;
   }
   return null;
@@ -396,25 +394,22 @@ function getCanvasCoords(e) {
 function onCanvasMouseMove(e) {
   const { mx, my } = getCanvasCoords(e);
   const hit = hitTest(mx, my);
-  if (hit !== hoveredDrawingId) {
-    hoveredDrawingId = hit; drawCanvas();
-    const tip = document.getElementById('umap-tooltip');
-    if (hit) {
-      const pt = allPoints.find(p => p.drawing_id === hit);
-      tip.innerHTML = `<strong>${pt.title || pt.filename}</strong><br><span style="color:var(--text-tertiary)">${pt.drawn_date || ''}</span>`;
-      tip.style.display = 'block'; tip.style.left = (mx + 12) + 'px'; tip.style.top = (my - 10) + 'px';
-      canvas.style.cursor = 'pointer';
-    } else { tip.style.display = 'none'; canvas.style.cursor = ''; }
-  } else if (hit) {
-    const tip = document.getElementById('umap-tooltip');
-    tip.style.left = (mx + 12) + 'px'; tip.style.top = (my - 10) + 'px';
+  // In timeline mode canvas hover shows tooltip but does NOT change canvas highlights
+  // (highlights are driven by scroll position only)
+  const tip = document.getElementById('umap-tooltip');
+  if (hit) {
+    const pt = allPoints.find(p => p.drawing_id === hit);
+    tip.innerHTML = `<strong>${pt.title || pt.filename}</strong><br><span style="color:var(--text-tertiary)">${pt.drawn_date || ''}</span>`;
+    tip.style.display = 'block'; tip.style.left = (mx + 12) + 'px'; tip.style.top = (my - 10) + 'px';
+    canvas.style.cursor = 'pointer';
+  } else {
+    tip.style.display = 'none'; canvas.style.cursor = '';
   }
 }
 
 function onCanvasMouseLeave() {
-  hoveredDrawingId = null;
   document.getElementById('umap-tooltip').style.display = 'none';
-  canvas.style.cursor = ''; drawCanvas();
+  canvas.style.cursor = '';
 }
 
 function onCanvasClick(e) {
@@ -453,7 +448,7 @@ function onLensClick(lensId) {
 }
 
 function backToLenses() {
-  mapMode = 'lenses'; activeLensId = null; hoveredDrawingId = null; activeDrawingId = null;
+  mapMode = 'lenses'; activeLensId = null; activeDrawingId = null;
   if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
   document.getElementById('panel-timeline').style.display = 'none';
   document.getElementById('panel-lenses').style.display   = '';
@@ -520,14 +515,38 @@ function renderTimeline(lensId) {
       </div>
     `;
 
-    row.addEventListener('mouseenter', () => { if (!row.classList.contains('tl-active')) { hoveredDrawingId = drawing.id; drawCanvas(); } });
-    row.addEventListener('mouseleave', () => { if (!row.classList.contains('tl-active')) { hoveredDrawingId = null; drawCanvas(); } });
+    // No hover ↔ canvas linkage in timeline mode — scroll position drives everything
     list.appendChild(row);
   });
+
+  // Spacer: tall enough so the last real row can scroll to the center detection zone
+  const spacer = document.createElement('div');
+  spacer.className = 'tl-bottom-spacer';
+  list.appendChild(spacer);
+
+  // Prediction card (loads asynchronously)
+  const predCard = document.createElement('div');
+  predCard.className = 'tl-prediction-card';
+  predCard.id = 'tl-prediction-card';
+  predCard.innerHTML = `
+    <div class="tl-prediction-header">
+      <span class="tl-prediction-icon">✦</span>
+      <span class="tl-prediction-label">What might come next</span>
+    </div>
+    <div class="tl-prediction-body" id="tl-prediction-body">
+      <div class="tl-prediction-placeholder">
+        <div class="tl-prediction-shimmer"></div>
+        <div class="tl-prediction-shimmer" style="width:80%;"></div>
+        <div class="tl-prediction-shimmer" style="width:65%;"></div>
+      </div>
+    </div>
+  `;
+  list.appendChild(predCard);
 
   // Load existing reactions for this lens's drawings
   loadReactions(sorted.map(d => d.id));
   setupScrollObserver(lensId);
+  loadPrediction(lensId);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -542,40 +561,78 @@ function setupScrollObserver(lensId) {
   let currentActive = null;
 
   scrollObserver = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (!entry.target.classList.contains('timeline-row')) return;
+    // Sort by intersection ratio descending so the most-visible row wins
+    const intersecting = entries
+      .filter(e => e.isIntersecting && e.target.classList.contains('timeline-row'))
+      .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+
+    if (intersecting.length > 0) {
+      const entry = intersecting[0];
       const drawingId = parseInt(entry.target.dataset.drawingId);
 
-      if (entry.isIntersecting) {
-        // Deactivate previous
-        if (currentActive && currentActive !== entry.target) {
-          currentActive.classList.remove('tl-active');
-        }
-        entry.target.classList.add('tl-active');
-        currentActive = entry.target;
-
-        // Sync map highlight
-        activeDrawingId  = drawingId;
-        hoveredDrawingId = null;
-        drawCanvas();
-
-        // Scroll map point into visual prominence (no scroll, just redraw)
-      } else {
-        if (currentActive === entry.target) {
+      if (currentActive && currentActive !== entry.target) {
+        currentActive.classList.remove('tl-active');
+      }
+      entry.target.classList.add('tl-active');
+      currentActive = entry.target;
+      activeDrawingId = drawingId;
+      drawCanvas();
+    } else {
+      // Check if any non-intersecting entry was the current active
+      entries.forEach(entry => {
+        if (!entry.isIntersecting && currentActive === entry.target) {
           entry.target.classList.remove('tl-active');
           currentActive = null;
           activeDrawingId = null;
           drawCanvas();
         }
-      }
-    });
+      });
+    }
   }, {
     root: scrollEl,
-    rootMargin: '-35% 0px -35% 0px',   // center 30% of the scroll area
-    threshold: 0.1,
+    // Asymmetric margin: top edge cuts off 30%, bottom only 20%
+    // This lets items near the bottom of the list activate before the spacer is visible
+    rootMargin: '-30% 0px -20% 0px',
+    threshold: [0.1, 0.5],
   });
 
   scrollEl.querySelectorAll('.timeline-row').forEach(row => scrollObserver.observe(row));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Prediction card
+═══════════════════════════════════════════════════════════════════════ */
+const predictionCache = {};  // { lens_id: text }
+
+async function loadPrediction(lensId) {
+  const bodyEl = document.getElementById('tl-prediction-body');
+  if (!bodyEl) return;
+
+  // Use cache if available
+  if (predictionCache[lensId]) {
+    renderPrediction(predictionCache[lensId]);
+    return;
+  }
+
+  try {
+    const data = await API.get(`/lenses/${lensId}/prediction?user_id=${State.userId}`);
+    predictionCache[lensId] = data.prediction;
+    renderPrediction(data.prediction);
+  } catch(e) {
+    // Annotations might not be ready yet — show a soft message instead of an error
+    if (bodyEl) {
+      bodyEl.innerHTML = `<p class="tl-prediction-text" style="color:var(--text-tertiary);font-style:normal;">Prediction will appear once annotations are ready.</p>`;
+    }
+  }
+}
+
+function renderPrediction(text) {
+  const bodyEl = document.getElementById('tl-prediction-body');
+  if (!bodyEl) return;
+  bodyEl.innerHTML = `<p class="tl-prediction-text">${text}</p>`;
+  // Fade the card in
+  const card = document.getElementById('tl-prediction-card');
+  if (card) card.classList.add('tl-prediction-ready');
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

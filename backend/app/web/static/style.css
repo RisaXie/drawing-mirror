@@ -451,6 +451,75 @@ p  { color: var(--text-secondary); }
 }
 .tl-date { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
 
+/* ── Bottom spacer — lets the last real row scroll into the observer window ── */
+.tl-bottom-spacer {
+  height: 45vh;   /* roughly matches the bottom dead-zone so last item can center */
+  flex-shrink: 0;
+}
+
+/* ── Prediction card ── */
+.tl-prediction-card {
+  margin: 4px 0 0;
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+  background: var(--bg);
+  overflow: hidden;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.tl-prediction-card.tl-prediction-ready {
+  opacity: 1;
+  transform: none;
+}
+
+.tl-prediction-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 16px 8px;
+  border-bottom: 1px dashed var(--border);
+}
+.tl-prediction-icon {
+  font-size: 13px;
+  color: var(--lens-purple);
+  opacity: 0.7;
+}
+.tl-prediction-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.tl-prediction-body {
+  padding: 14px 16px 18px;
+}
+.tl-prediction-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.6;
+}
+
+/* Shimmer placeholder while loading */
+.tl-prediction-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tl-prediction-shimmer {
+  height: 12px;
+  width: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--border) 25%, #e0e0da 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* Utility */
 .mt-8  { margin-top: 8px; }
 .mt-16 { margin-top: 16px; }

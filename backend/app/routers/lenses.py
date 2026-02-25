@@ -138,6 +138,68 @@ async def get_lens_drawings(
     )
 
 
+@router.get("/{lens_id}/prediction")
+async def get_lens_prediction(lens_id: int, user_id: int = Query(...)):
+    """
+    Generate a prediction of what the user might draw next under this lens,
+    based on all the lens annotations in chronological order.
+    Cached in memory per (lens_id, user_id) — regenerates on restart.
+    """
+    from app.services.ai.vision import get_vision_service
+    settings = get_settings()
+
+    with get_db() as db:
+        lens_row = db.execute(
+            "SELECT * FROM lenses WHERE id = ? AND user_id = ?", (lens_id, user_id)
+        ).fetchone()
+        if not lens_row:
+            raise HTTPException(status_code=404, detail="Lens not found")
+
+        rows = db.execute("""
+            SELECT d.filename, d.drawn_date, d.title, ldl.annotation
+            FROM lens_drawing_links ldl
+            JOIN drawings d ON d.id = ldl.drawing_id
+            WHERE ldl.lens_id = ?
+              AND ldl.relevance_score >= ?
+              AND ldl.annotation IS NOT NULL
+            ORDER BY d.drawn_date ASC, d.filename ASC
+        """, (lens_id, settings.relevance_threshold)).fetchall()
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="No annotations yet — generate annotations first")
+
+    lens_name = lens_row['name']
+    lens_desc = lens_row['description']
+
+    # Build the prompt
+    drawing_lines = []
+    for r in rows:
+        date_str = r['drawn_date'] or 'unknown date'
+        title_str = r['title'] or r['filename']
+        annotation = r['annotation'] or ''
+        drawing_lines.append(f"{date_str} — {title_str}: {annotation}")
+
+    all_text = "\n".join(drawing_lines)
+
+    prompt = f"""You are helping someone reflect on their personal drawing archive through the lens of "{lens_name}" — {lens_desc}
+
+Here are their drawings in chronological order, each observed through this lens:
+
+{all_text}
+
+Based on this arc — how this person's work has evolved under the lens of "{lens_name}" — write a quiet, specific prediction of what their next drawing might look like or explore.
+
+Write 2–3 sentences. Be concrete and grounded in what you actually observed in the arc above. Don't be generic. Frame it as a natural continuation, not a prescription. Don't start with "Your next drawing" — vary the opening."""
+
+    vision = get_vision_service()
+    try:
+        prediction_text = await vision.synthesize_text(prompt, max_tokens=300)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
+
+    return {"prediction": prediction_text.strip(), "lens_name": lens_name}
+
+
 @router.get("/{lens_id}/annotation_status", response_model=AnnotationStatusResponse)
 async def get_annotation_status(lens_id: int, user_id: int = Query(...)):
     """Poll annotation generation progress for a lens."""
